@@ -12,17 +12,21 @@ class PHPRestSQLRenderer {
     var $PHPRestSQL;
    
     /**
-     * Constructor. Takes an output array and calls the appropriate handler.
+     * Constructor.
      * @param PHPRestSQL PHPRestSQL
      */
     function render($PHPRestSQL) {
         $this->PHPRestSQL = $PHPRestSQL;
-        if (isset($PHPRestSQL->output['database'])) {
-            $this->database();
-        } elseif (isset($PHPRestSQL->output['table'])) {
-            $this->table();
-        } elseif (isset($PHPRestSQL->output['row'])) {
-            $this->row();
+        switch($PHPRestSQL->display) {
+            case 'database':
+                $this->database();
+                break;
+            case 'table':
+                $this->table();
+                break;
+            case 'row':
+                $this->row();
+                break;
         }
     }
     
@@ -33,10 +37,12 @@ class PHPRestSQLRenderer {
         header('Content-Type: text/xml');
         echo '<?xml version="1.0" encoding="UTF-8"?>';
         echo '<database xmlns:xlink="http://www.w3.org/1999/xlink">';
-        foreach ($this->PHPRestSQL->output['database'] as $table) {
-            echo '<table xlink:href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</table>';
+        if (isset($this->PHPRestSQL->output['database'])) {
+            foreach ($this->PHPRestSQL->output['database'] as $table) {
+                echo '<table xlink:href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</table>';
+            }
         }
-        echo '</database>'; 
+        echo '</database>';
     }
     
     /**
@@ -46,8 +52,10 @@ class PHPRestSQLRenderer {
         header('Content-Type: text/xml');
         echo '<?xml version="1.0" encoding="UTF-8"?>';
         echo '<table xmlns:xlink="http://www.w3.org/1999/xlink">';
-        foreach ($this->PHPRestSQL->output['table'] as $row) {
-            echo '<row xlink:href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</row>';
+        if (isset($this->PHPRestSQL->output['table'])) {
+            foreach ($this->PHPRestSQL->output['table'] as $row) {
+                echo '<row xlink:href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</row>';
+            }
         }
         echo '</table>'; 
     }
@@ -59,13 +67,15 @@ class PHPRestSQLRenderer {
         header('Content-Type: text/xml');
         echo '<?xml version="1.0" encoding="UTF-8"?>';
         echo '<row xmlns:xlink="http://www.w3.org/1999/xlink">';
-        foreach ($this->PHPRestSQL->output['row'] as $field) {
-            $fieldName = $field['field'];
-            echo '<'.$fieldName;
-            if (isset($field['xlink'])) {
-                echo ' xlink:href="'.htmlspecialchars($field['xlink']).'"';
+        if (isset($this->PHPRestSQL->output['row'])) {
+            foreach ($this->PHPRestSQL->output['row'] as $field) {
+                $fieldName = $field['field'];
+                echo '<'.$fieldName;
+                if (isset($field['xlink'])) {
+                    echo ' xlink:href="'.htmlspecialchars($field['xlink']).'"';
+                }
+                echo '>'.htmlspecialchars($field['value']).'</'.$fieldName.'>';
             }
-            echo '>'.htmlspecialchars($field['value']).'</'.$fieldName.'>';
         }
         echo '</row>';
     }

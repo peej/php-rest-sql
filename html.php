@@ -17,12 +17,16 @@ class PHPRestSQLRenderer {
      */
     function render($PHPRestSQL) {
         $this->PHPRestSQL = $PHPRestSQL;
-        if (isset($PHPRestSQL->output['database'])) {
-            $this->database();
-        } elseif (isset($PHPRestSQL->output['table'])) {
-            $this->table();
-        } elseif (isset($PHPRestSQL->output['row'])) {
-            $this->row();
+        switch($PHPRestSQL->display) {
+            case 'database':
+                $this->database();
+                break;
+            case 'table':
+                $this->table();
+                break;
+            case 'row':
+                $this->row();
+                break;
         }
     }
     
@@ -38,11 +42,13 @@ class PHPRestSQLRenderer {
         echo '</head>';
         echo '<body>';
         echo '<h1>Tables in database "'.htmlspecialchars($this->PHPRestSQL->config['database']['database']).'"</h1>';
-        echo '<ul>';
-        foreach ($this->PHPRestSQL->output['database'] as $table) {
-            echo '<li><a href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</a></li>';
+        if (isset($this->PHPRestSQL->output['database'])) {
+            echo '<ul>';
+            foreach ($this->PHPRestSQL->output['database'] as $table) {
+                echo '<li><a href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</a></li>';
+            }
+            echo '</ul>';
         }
-        echo '</ul>';
         echo '</body>';
         echo '</html>';
     }
@@ -59,11 +65,13 @@ class PHPRestSQLRenderer {
         echo '</head>';
         echo '<body>';
         echo '<h1>Records in table "'.htmlspecialchars($this->PHPRestSQL->table).'"</h1>';
-        echo '<ul>';
-        foreach ($this->PHPRestSQL->output['table'] as $row) {
-            echo '<li><a href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</a></li>';
+        if (isset($this->PHPRestSQL->output['table'])) {
+            echo '<ul>';
+            foreach ($this->PHPRestSQL->output['table'] as $row) {
+                echo '<li><a href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</a></li>';
+            }
+            echo '</ul>';
         }
-        echo '</ul>';
         echo '</body>';
         echo '</html>';
     }
@@ -80,17 +88,19 @@ class PHPRestSQLRenderer {
         echo '</head>';
         echo '<body>';
         echo '<h1>Record #'.htmlspecialchars(join('/', $this->PHPRestSQL->uid)).'</h1>';
-        echo '<table>';
-        foreach ($this->PHPRestSQL->output['row'] as $field) {
-            echo '<tr><th>'.htmlspecialchars($field['field']).'</th><td>';
-            if (isset($field['xlink'])) {
-                echo '<a href="'.htmlspecialchars($field['xlink']).'">'.htmlspecialchars($field['value']).'</a>';
-            } else {
-                echo htmlspecialchars($field['value']);
+        if (isset($this->PHPRestSQL->output['row'])) {
+            echo '<table>';
+            foreach ($this->PHPRestSQL->output['row'] as $field) {
+                echo '<tr><th>'.htmlspecialchars($field['field']).'</th><td>';
+                if (isset($field['xlink'])) {
+                    echo '<a href="'.htmlspecialchars($field['xlink']).'">'.htmlspecialchars($field['value']).'</a>';
+                } else {
+                    echo htmlspecialchars($field['value']);
+                }
+                echo '</td></tr>';
             }
-            echo '</td></tr>';
+            echo '</table>';
         }
-        echo '</table>';
         echo '</body>';
         echo '</html>';
     }

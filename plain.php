@@ -17,12 +17,16 @@ class PHPRestSQLRenderer {
      */
     function render($PHPRestSQL) {
         $this->PHPRestSQL = $PHPRestSQL;
-        if (isset($PHPRestSQL->output['database'])) {
-            $this->database();
-        } elseif (isset($PHPRestSQL->output['table'])) {
-            $this->table();
-        } elseif (isset($PHPRestSQL->output['row'])) {
-            $this->row();
+        switch($PHPRestSQL->display) {
+            case 'database':
+                $this->database();
+                break;
+            case 'table':
+                $this->table();
+                break;
+            case 'row':
+                $this->row();
+                break;
         }
     }
 
@@ -32,8 +36,10 @@ class PHPRestSQLRenderer {
      */
     function database() {
         header('Content-Type: text/plain');
-        foreach ($this->PHPRestSQL->output['database'] as $table) {
-            echo $table['value'].'['.$table['xlink']."]\n";
+        if (isset($this->PHPRestSQL->output['database'])) {
+            foreach ($this->PHPRestSQL->output['database'] as $table) {
+                echo $table['value'].'['.$table['xlink']."]\n";
+            }
         }
     }
     
@@ -42,8 +48,10 @@ class PHPRestSQLRenderer {
      */
     function table() {
         header('Content-Type: text/plain');
-        foreach ($this->PHPRestSQL->output['table'] as $row) {
-            echo $row['value'].'['.$row['xlink']."]\n";
+        if (isset($this->PHPRestSQL->output['table'])) {
+            foreach ($this->PHPRestSQL->output['table'] as $row) {
+                echo $row['value'].'['.$row['xlink']."]\n";
+            }
         }
     }
     
@@ -52,12 +60,14 @@ class PHPRestSQLRenderer {
      */
     function row() {
         header('Content-Type: text/plain');
-        foreach ($this->PHPRestSQL->output['row'] as $field) {
-            echo $field['field'].'='.$field['value'];
-            if (isset($field['xlink'])) {
-                echo '['.$field['xlink'].']';
+        if (isset($this->PHPRestSQL->output['row'])) {
+            foreach ($this->PHPRestSQL->output['row'] as $field) {
+                echo $field['field'].'='.$field['value'];
+                if (isset($field['xlink'])) {
+                    echo '['.$field['xlink'].']';
+                }
+                echo "\n";
             }
-            echo "\n";
         }
     }
 

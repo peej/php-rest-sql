@@ -69,6 +69,11 @@ class PHPRestSQL {
     var $output = array();
     
     /**
+     * Type of display, database, table or row.
+     */
+    var $display = NULL;
+    
+    /**
      * Constructor. Parses the configuration file "phprestsql.ini", grabs any request data sent, records the HTTP
      * request method used and parses the request URL to find out the requested table name and primary key values.
      * @param str iniFile Configuration file to use
@@ -110,8 +115,11 @@ class PHPRestSQL {
      * Connect to the database.
      */
     function connect() {
+        $database = $this->config['database']['type'];
+        require_once($database.'.php');
+        $this->db = new $database(); 
         if (isset($this->config['database']['username']) && isset($this->config['database']['password'])) {
-            if (!$this->db = mysql_pconnect(
+            if (!$this->db->connect(
                 $this->config['database']['server'],
                 $this->config['database']['username'],
                 $this->config['database']['password']
@@ -119,7 +127,7 @@ class PHPRestSQL {
                 trigger_error('Could not connect to server', E_USER_ERROR);
             }
         } elseif (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
-            if (!$this->db = mysql_pconnect(
+            if (!$this->db->connect(
                 $this->config['database']['server'],
                 $_SERVER['PHP_AUTH_USER'],
                 $_SERVER['PHP_AUTH_PW']
@@ -131,64 +139,9 @@ class PHPRestSQL {
             $this->unauthorized();
             exit;
         }
-        if ($this->db && !mysql_select_db($this->config['database']['database'], $this->db)) {
+        if (!$this->db->select_db($this->config['database']['database'])) {
             trigger_error('Could not select database', E_USER_ERROR);   
         }
-    }
-
-    /**
-     * Close the database connection.
-     */
-    function close() {
-        mysql_close($this->db);
-    }
-    
-    /**
-     * Query the database.
-     * @param str query The database query
-     * @return resource A resultset resource
-     */
-    function &query($query) {
-        return mysql_query($query, $this->db);
-    }
-    
-    /**
-     * Escape a string to be part of the database query.
-     * @param str string The string to escape
-     * @return str The escaped string
-     */
-    function escape($string) {
-        return mysql_escape_string($string);
-    }
-    
-    /**
-     * Fetch a row from a query resultset.
-     * @param resource resource A resultset resource
-     * @return str[] An array of the fields and values from the next row in the resultset
-     */
-    function row($resource) {
-        return mysql_fetch_assoc($resource);   
-    }
-
-    /**
-     * The number of rows in a resultset.
-     * @param resource resource A resultset resource
-     * @return int The number of rows
-     */
-    function numRows($resource) {
-        return mysql_num_rows($resource);
-    }
-
-    /**
-     * The number of rows affected by a query.
-     * @return int The number of rows
-     */
-    function numAffected() {
-        return mysql_affected_rows($this->db);
-    }
-    
-    function lastInsertId() {
-        return mysql_insert_id();   
     }
     
     /**
@@ -213,7 +166,7 @@ class PHPRestSQL {
                 break;
         }
    
-        $this->close();
+        $this->db->close();
         
     }
 
@@ -222,10 +175,10 @@ class PHPRestSQL {
      * @return str[] The primary key field names
      */
     function getPrimaryKeys() {
-        $resource = $this->query(sprintf('SHOW COLUMNS FROM %s', $this->table));
+        $resource = $this->db->getColumns($this->table);
         $primary = NULL;
         if ($resource) {
-            while ($row = $this->row($resource)) {
+            while ($row = $this->db->row($resource)) {
                 if ($row['Key'] == 'PRI') {
                     $primary[] = $row['Field'];
                 }
@@ -244,15 +197,16 @@ class PHPRestSQL {
             $primary = $this->getPrimaryKeys();
             if ($primary) {
                 if ($this->uid && count($primary) == count($this->uid)) { // get a row
+                    $this->display = 'row';
                     $where = '';
                     foreach($primary as $key => $pri) {
                         $where .= $pri.' = '.$this->uid[$key].' AND ';
                     }
                     $where = substr($where, 0, -5);
-                    $resource = $this->query(sprintf('SELECT * FROM %s WHERE %s', $this->table, $where));
+                    $resource = $this->db->getRow($this->table, $where);
                     if ($resource) {
-                        if ($this->numRows($resource) > 0) {
-                            while ($row = $this->row($resource)) {
+                        if ($this->db->numRows($resource) > 0) {
+                            while ($row = $this->db->row($resource)) {
                                 $values = array();
                                 foreach ($row as $column => $data) {
                                     $field = array(
@@ -273,30 +227,30 @@ class PHPRestSQL {
                     } else {
                         $this->unauthorized();
                     }
-                } else { // get row list
-                    $resource = $this->query(sprintf('SELECT %s FROM %s', join(', ', $primary), $this->table));
+                } else { // get table
+                    $this->display = 'table';
+                    $resource = $this->db->getTable(join(', ', $primary), $this->table);
                     if ($resource) {
-                        if ($this->numRows($resource) > 0) {
-                            while ($row = $this->row($resource)) {
+                        if ($this->db->numRows($resource) > 0) {
+                            while ($row = $this->db->row($resource)) {
                                 $this->output['table'][] = array(
                                     'xlink' => 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].$this->table.'/'.join('/', $row).'/',
                                     'value' => join(' ', $row)
                                 );
                             }
-                            $this->generateResponseData();
-                        } else {
-                            $this->notFound();
                         }
+                        $this->generateResponseData();
                     } else {
                         $this->unauthorized();
                     }
                 }
             }
-        } else { // get table list
-            $resource = $this->query('SHOW TABLES');
+        } else { // get database
+            $this->display = 'database';
+            $resource = $this->db->getDatabase();
             if ($resource) {
-                if ($this->numRows($resource) > 0) {
-                    while ($row = $this->row($resource)) {
+                if ($this->db->numRows($resource) > 0) {
+                    while ($row = $this->db->row($resource)) {
                         $this->output['database'][] = array(
                             'xlink' => 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].reset($row).'/',
                             'value' => reset($row)
@@ -319,11 +273,11 @@ class PHPRestSQL {
         if ($this->table && $this->uid) {
             if ($this->requestData) {
                 $primary = $this->getPrimaryKeys();
-                if ($primary && count($primary) == count($this->uid)) { // get a row
+                if ($primary && count($primary) == count($this->uid)) { // update a row
                     $pairs = $this->parseRequestData();
                     $values = '';
                     foreach ($pairs as $column => $data) {
-                        $values .= '`'.$column.'` = "'.$this->escape($data).'", ';
+                        $values .= '`'.$column.'` = "'.$this->db->escape($data).'", ';
                     }
                     $values = substr($values, 0, -2);
                     $where = '';
@@ -331,9 +285,9 @@ class PHPRestSQL {
                         $where .= $pri.' = '.$this->uid[$key].' AND ';
                     }
                     $where = substr($where, 0, -5);
-                    $resource = $this->query(sprintf('UPDATE %s SET %s WHERE %s', $this->table, $values, $where));
+                    $resource = $this->db->updateRow($this->table, $values, $where);
                     if ($resource) {
-                        if ($this->numAffected() > 0) {
+                        if ($this->db->numAffected() > 0) {
                             $values = array();
                             foreach ($pairs as $column => $data) {
                                 $field = array(
@@ -359,35 +313,21 @@ class PHPRestSQL {
             } else {
                 $this->lengthRequired();
             }
-        } elseif ($this->table) {
-            $this->methodNotAllowed('GET, HEAD, PUT');
-        } else {
-            $this->methodNotAllowed('GET, HEAD');
-        }
-    }
-
-    /**
-     * Execute a PUT request. A PUT request adds a new row to a table given a table and name=value pairs in the
-     * request body.
-     */
-    function put() {
-        if ($this->uid) {
-            $this->methodNotAllowed('GET, HEAD, POST, DELETE');
-        } elseif ($this->table) {
+        } elseif ($this->table) { // insert a row without a uid
             if ($this->requestData) {
                 $pairs = $this->parseRequestData();
                 $values = join('", "', $pairs);
                 $names = join('`, `', array_keys($pairs));
-                $resource = $this->query(sprintf('INSERT INTO %s (`%s`) VALUES ("%s")', $this->table, $names, $values));
+                $resource = $this->db->insertRow($this->table, $names, $values);
                 if ($resource) {
-                    if ($this->numAffected() > 0) {
+                    if ($this->db->numAffected() > 0) {
                         $values = array();
                         $primary = $this->getPrimaryKeys();
                         foreach ($primary as $pri) {
                             if (!isset($pairs[$pri])) {
                                 $values[] = array(
                                     'field' => $pri,
-                                    'value' => $this->lastInsertId()
+                                    'value' => $this->db->lastInsertId()
                                 );
                             }
                         }
@@ -402,7 +342,6 @@ class PHPRestSQL {
                             $values[] = $field;
                         }
                         $this->output['row'] = $values;
-                        header('Location: http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].'/'.$this->table.'/'.$this->lastInsertId().'/');
                         $this->generateResponseData();
                     } else {
                         $this->badRequest();
@@ -419,20 +358,55 @@ class PHPRestSQL {
     }
 
     /**
+     * Execute a PUT request. A PUT request adds a new row to a table given a table and name=value pairs in the
+     * request body.
+     */
+    function put() {
+        if ($this->table && $this->uid) {
+            if ($this->requestData) {
+                $primary = $this->getPrimaryKeys();
+                if ($primary && count($primary) == count($this->uid)) { // insert a row with a uid
+                    $pairs = $this->parseRequestData();
+                    $values = join('", "', $this->uid).'", "'.join('", "', $pairs);
+                    $names = join('`, `', $primary).'`, `'.join('`, `', array_keys($pairs));
+                    $resource = $this->db->insertRow($this->table, $names, $values);
+                    if ($resource) {
+                        if ($this->db->numAffected() > 0) {
+                            $this->created();
+                        } else {
+                            $this->methodNotAllowed('GET, HEAD, DELETE, POST');
+                        }
+                    } else {
+                        $this->methodNotAllowed('GET, HEAD, DELETE, POST');
+                    }
+                } else {
+                    $this->badRequest();
+                }
+            } else {
+                $this->lengthRequired();
+            }
+        } elseif ($this->table) {
+            $this->methodNotAllowed('GET, HEAD, PUT');
+        } else {
+            $this->methodNotAllowed('GET, HEAD');
+        }
+    }
+
+    /**
      * Execute a DELETE request. A DELETE request removes a row from the database given a table and primary key(s).
      */
     function delete() {
         if ($this->table && $this->uid) {
             $primary = $this->getPrimaryKeys();
-            if ($primary && count($primary) == count($this->uid)) { // get a row
+            if ($primary && count($primary) == count($this->uid)) { // delete a row
                 $where = '';
                 foreach($primary as $key => $pri) {
                     $where .= $pri.' = '.$this->uid[$key].' AND ';
                 }
                 $where = substr($where, 0, -5);
-                $resource = $this->query(sprintf('DELETE FROM %s WHERE %s', $this->table, $where));
+                $resource = $this->db->deleteRow($this->table, $where);
                 if ($resource) {
-                    if ($this->numAffected() > 0) {
+                    if ($this->db->numAffected() > 0) {
                         $this->noContent();
                     } else {
                         $this->notFound();
@@ -458,7 +432,7 @@ class PHPRestSQL {
         foreach ($pairs as $pair) {
             $parts = explode('=', $pair);
             if (isset($parts[0]) && isset($parts[1])) {
-                $values[$parts[0]] = $this->escape($parts[1]);
+                $values[$parts[0]] = $this->db->escape($parts[1]);
             }
         }
         return $values;
@@ -498,6 +472,13 @@ class PHPRestSQL {
         require_once($renderClass);
         $renderer = new PHPRestSQLRenderer();
         $renderer->render($this);
+    }
+    
+    /**
+     * Send a HTTP 201 response header.
+     */
+    function created() {
+        header('HTTP/1.0 201 Created');
     }
     
     /**
