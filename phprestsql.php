@@ -459,6 +459,12 @@ class PHPRestSQL {
                     if (isset($this->config['renderers'][$accept])) {
                         $renderClass = $this->config['renderers'][$accept];
                         break 2;
+                    } else {
+                        $grep = preg_grep('/'.str_replace($accept, '*', '.*').'/', array_keys($this->config['renderers']));
+                        if ($grep) {
+                            $renderClass = $this->config['renderers'][$grep[0]];
+                            break 2;
+                        }
                     }
                 }
             }
