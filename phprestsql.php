@@ -305,7 +305,7 @@ class PHPRestSQL {
                             $this->badRequest();
                         }
                     } else {
-                        $this->badRequest();
+                        $this->internalServerError();
                     }
                 } else {
                     $this->badRequest();
@@ -347,7 +347,7 @@ class PHPRestSQL {
                         $this->badRequest();
                     }
                 } else {
-                    $this->badRequest();
+                    $this->internalServerError();
                 }
             } else {
                 $this->lengthRequired();
@@ -370,14 +370,29 @@ class PHPRestSQL {
                     $values = join('", "', $this->uid).'", "'.join('", "', $pairs);
                     $names = join('`, `', $primary).'`, `'.join('`, `', array_keys($pairs));
                     $resource = $this->db->insertRow($this->table, $names, $values);
-                    if ($resource) {
-                        if ($this->db->numAffected() > 0) {
-                            $this->created();
-                        } else {
-                            $this->methodNotAllowed('GET, HEAD, DELETE, POST');
-                        }
+                    if ($resource && $this->db->numAffected() > 0) {
+                        $this->created();
                     } else {
-                        $this->methodNotAllowed('GET, HEAD, DELETE, POST');
+                        $values = '';
+                        foreach ($pairs as $column => $data) {
+                            $values .= '`'.$column.'` = "'.$this->db->escape($data).'", ';
+                        }
+                        $values = substr($values, 0, -2);
+                        $where = '';
+                        foreach($primary as $key => $pri) {
+                            $where .= $pri.' = '.$this->uid[$key].' AND ';
+                        }
+                        $where = substr($where, 0, -5);
+                        $resource = $this->db->updateRow($this->table, $values, $where);
+                        if ($resource) {
+                            if ($this->db->numAffected() > 0) {
+                                $this->noContent();
+                            } else {
+                                $this->badRequest();
+                            }
+                        } else {
+                            $this->internalServerError();
+                        }
                     }
                 } else {
                     $this->badRequest();
@@ -537,6 +552,13 @@ class PHPRestSQL {
      */
     function lengthRequired() {
         header('HTTP/1.0 411 Length Required');
+    }
+    
+    /**
+     * Send a HTTP 500 response header.
+     */
+    function internalServerError() {
+        header('HTTP/1.0 500 Internal Server Error');
     }
     
 }
