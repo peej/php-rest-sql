@@ -321,28 +321,7 @@ class PHPRestSQL {
                 $resource = $this->db->insertRow($this->table, $names, $values);
                 if ($resource) {
                     if ($this->db->numAffected() > 0) {
-                        $values = array();
-                        $primary = $this->getPrimaryKeys();
-                        foreach ($primary as $pri) {
-                            if (!isset($pairs[$pri])) {
-                                $values[] = array(
-                                    'field' => $pri,
-                                    'value' => $this->db->lastInsertId()
-                                );
-                            }
-                        }
-                        foreach ($pairs as $column => $data) {
-                            $field = array(
-                                'field' => $column,
-                                'value' => $data
-                            );
-                            if (substr($column, -strlen($this->config['database']['foreignKeyPostfix'])) == $this->config['database']['foreignKeyPostfix']) {
-                                $field['xlink'] = 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].substr($column, 0, -strlen($this->config['database']['foreignKeyPostfix'])).'/'.$data.'/';
-                            }
-                            $values[] = $field;
-                        }
-                        $this->output['row'] = $values;
-                        $this->generateResponseData();
+                        $this->created('http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].$this->table.'/'.$this->db->lastInsertId().'/');
                     } else {
                         $this->badRequest();
                     }
@@ -494,12 +473,15 @@ class PHPRestSQL {
         $renderer = new PHPRestSQLRenderer();
         $renderer->render($this);
     }
-    
+        
     /**
      * Send a HTTP 201 response header.
      */
-    function created() {
+    function created($url = FALSE) {
         header('HTTP/1.0 201 Created');
+        if ($url) {
+            header('Location: '.$url);   
+        }
     }
     
     /**
