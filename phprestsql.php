@@ -82,7 +82,7 @@ class PHPRestSQL {
         
         $this->config = parse_ini_file($iniFile, TRUE);
         
-        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD'])) {
+        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['QUERY_STRING']) {
         
             if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
                 $this->requestData = '';
@@ -92,8 +92,7 @@ class PHPRestSQL {
                 }
                 fclose($httpContent);
             }
-            
-            $urlString = substr($_SERVER['REQUEST_URI'], strlen($this->config['settings']['baseURL']));
+            $urlString = substr($_SERVER['REQUEST_URI'], strlen($this->config['settings']['baseURL']), -(strlen($_SERVER['QUERY_STRING']) + 1));
             $urlParts = explode('/', $urlString);
 
             if (isset($urlParts[0])) $this->table = $urlParts[0];
@@ -108,6 +107,8 @@ class PHPRestSQL {
             
             $this->method = $_SERVER['REQUEST_METHOD'];
             
+        } else {
+            trigger_error('I require the server variables REQUEST_URI, REQUEST_METHOD and QUERY_STRING to work.', E_USER_ERROR);
         }
     }
     
@@ -229,7 +230,8 @@ class PHPRestSQL {
                     }
                 } else { // get table
                     $this->display = 'table';
-                    $resource = $this->db->getTable(join(', ', $primary), $this->table);
+                    $limit = isset($_GET['limit']) ? $_GET['limit'] : NULL;
+                    $resource = $this->db->getTable(join(', ', $primary), $this->table, $limit);
                     if ($resource) {
                         if ($this->db->numRows($resource) > 0) {
                             while ($row = $this->db->row($resource)) {
@@ -470,7 +472,7 @@ class PHPRestSQL {
             $renderClass = array_shift($this->config['renderers']);
         }
         require_once($renderClass);
-        $renderer = new PHPRestSQLRenderer();
+        $renderer =& new PHPRestSQLRenderer();
         $renderer->render($this);
     }
         
@@ -502,7 +504,9 @@ class PHPRestSQL {
      * Send a HTTP 401 response header.
      */
     function unauthorized($realm = 'PHPRestSQL') {
-        header('WWW-Authenticate: Basic realm="'.$realm.'"');
+        if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
+            header('WWW-Authenticate: Basic realm="'.$realm.'"');
+        }
         header('HTTP/1.0 401 Unauthorized');   
     }
     

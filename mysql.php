@@ -65,10 +65,15 @@ class mysql {
      * Get the rows in a table.
      * @param str primary The names of the primary columns to return
      * @param str table
+     * @param str limit
      * @return resource A resultset resource
      */
-    function getTable($primary, $table) {
-        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));   
+    function getTable($primary, $table, $limit) {
+        if (preg_match('/[0-9]+(,[0-9]+)?/', $limit)) {
+            return mysql_query(sprintf('SELECT %s FROM %s LIMIT %s', $primary, $table, $limit));
+        } else {
+            return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));
+        }
     }
 
     /**

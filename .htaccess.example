@@ -1,2 +1,5 @@
 RewriteEngine On
-RewriteRule  ^.*$ index.php [L]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+#RewriteRule ^.*$ index.php
+RewriteRule ^.*$ /phprestsql/demo/index.php
