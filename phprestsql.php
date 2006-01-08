@@ -82,7 +82,7 @@ class PHPRestSQL {
         
         $this->config = parse_ini_file($iniFile, TRUE);
         
-        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['QUERY_STRING']) {
+        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['QUERY_STRING'])) {
         
             if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
                 $this->requestData = '';
