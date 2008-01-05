@@ -1,5 +1,4 @@
 <?php
-/* $id$ */
 
 /**
  * PHP REST SQL XML renderer class
@@ -36,11 +35,11 @@ class PHPRestSQLRenderer {
      */
     function database() {
         header('Content-Type: text/xml');
-        echo '<?xml version="1.0" encoding="UTF-8"?>';
-        echo '<database xmlns:xlink="http://www.w3.org/1999/xlink">';
+        echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        echo '<database xmlns:xlink="http://www.w3.org/1999/xlink">'."\n";
         if (isset($this->PHPRestSQL->output['database'])) {
             foreach ($this->PHPRestSQL->output['database'] as $table) {
-                echo '<table xlink:href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</table>';
+                echo "\t".'<table xlink:href="'.htmlspecialchars($table['xlink']).'">'.htmlspecialchars($table['value']).'</table>'."\n";
             }
         }
         echo '</database>';
@@ -51,11 +50,11 @@ class PHPRestSQLRenderer {
      */
     function table() {
         header('Content-Type: text/xml');
-        echo '<?xml version="1.0" encoding="UTF-8"?>';
-        echo '<table xmlns:xlink="http://www.w3.org/1999/xlink">';
+        echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        echo '<table xmlns:xlink="http://www.w3.org/1999/xlink">'."\n";
         if (isset($this->PHPRestSQL->output['table'])) {
             foreach ($this->PHPRestSQL->output['table'] as $row) {
-                echo '<row xlink:href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</row>';
+                echo "\t".'<row xlink:href="'.htmlspecialchars($row['xlink']).'">'.htmlspecialchars($row['value']).'</row>'."\n";
             }
         }
         echo '</table>'; 
@@ -66,21 +65,19 @@ class PHPRestSQLRenderer {
      */
     function row() {
         header('Content-Type: text/xml');
-        echo '<?xml version="1.0" encoding="UTF-8"?>';
-        echo '<row xmlns:xlink="http://www.w3.org/1999/xlink">';
+        echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        echo '<row xmlns:xlink="http://www.w3.org/1999/xlink">'."\n";
         if (isset($this->PHPRestSQL->output['row'])) {
             foreach ($this->PHPRestSQL->output['row'] as $field) {
                 $fieldName = $field['field'];
-                echo '<'.$fieldName;
+                echo "\t".'<'.$fieldName;
                 if (isset($field['xlink'])) {
                     echo ' xlink:href="'.htmlspecialchars($field['xlink']).'"';
                 }
-                echo '>'.htmlspecialchars($field['value']).'</'.$fieldName.'>';
+                echo '>'.htmlspecialchars($field['value']).'</'.$fieldName.'>'."\n";
             }
         }
         echo '</row>';
     }
 
 }
-
-?>

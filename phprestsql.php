@@ -43,13 +43,19 @@ class PHPRestSQL {
      * @var str
      */
     var $method = 'GET';
-
+	
     /**
      * The HTTP request data sent (if any).
      * @var str
      */
     var $requestData = NULL;
-
+	
+	/**
+	 * The URL extension stripped off of the request URL
+	 * @var str
+	 */
+	var $extension = NULL;
+	
     /**
      * The database table to query.
      * @var str
@@ -82,7 +88,7 @@ class PHPRestSQL {
         
         $this->config = parse_ini_file($iniFile, TRUE);
         
-        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['QUERY_STRING'])) {
+        if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD'])) {
         
             if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
                 $this->requestData = '';
@@ -92,9 +98,22 @@ class PHPRestSQL {
                 }
                 fclose($httpContent);
             }
-            $urlString = substr($_SERVER['REQUEST_URI'], strlen($this->config['settings']['baseURL']), -(strlen($_SERVER['QUERY_STRING']) + 1));
-            $urlParts = explode('/', $urlString);
-
+            
+            $urlString = substr($_SERVER['REQUEST_URI'], strlen($this->config['settings']['baseURL']));
+			$urlParts = explode('/', $urlString);
+			
+			$lastPart = array_pop($urlParts);
+			$dotPosition = strpos($lastPart, '.');
+			if ($dotPosition !== FALSE) {
+				$this->extension = substr($lastPart, $dotPosition + 1);
+				$lastPart = substr($lastPart, 0, $dotPosition);
+			}
+			array_push($urlParts, $lastPart);
+			
+			if (isset($urlParts[0]) && $urlParts[0] == '') {
+				array_shift($urlParts);
+			}
+			
             if (isset($urlParts[0])) $this->table = $urlParts[0];
             if (count($urlParts) > 1 && $urlParts[1] != '') {
                 array_shift($urlParts);
@@ -107,8 +126,6 @@ class PHPRestSQL {
             
             $this->method = $_SERVER['REQUEST_METHOD'];
             
-        } else {
-            trigger_error('I require the server variables REQUEST_URI, REQUEST_METHOD and QUERY_STRING to work.', E_USER_ERROR);
         }
     }
     
@@ -215,7 +232,7 @@ class PHPRestSQL {
                                         'value' => $data
                                     );
                                     if (substr($column, -strlen($this->config['database']['foreignKeyPostfix'])) == $this->config['database']['foreignKeyPostfix']) {
-                                        $field['xlink'] = 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].substr($column, 0, -strlen($this->config['database']['foreignKeyPostfix'])).'/'.$data.'/';
+										$field['xlink'] = $this->config['settings']['baseURL'].'/'.substr($column, 0, -strlen($this->config['database']['foreignKeyPostfix'])).'/'.$data;
                                     }
                                     $values[] = $field;
                                 }
@@ -230,13 +247,12 @@ class PHPRestSQL {
                     }
                 } else { // get table
                     $this->display = 'table';
-                    $limit = isset($_GET['limit']) ? $_GET['limit'] : NULL;
-                    $resource = $this->db->getTable(join(', ', $primary), $this->table, $limit);
+                    $resource = $this->db->getTable(join(', ', $primary), $this->table);
                     if ($resource) {
                         if ($this->db->numRows($resource) > 0) {
                             while ($row = $this->db->row($resource)) {
                                 $this->output['table'][] = array(
-                                    'xlink' => 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].$this->table.'/'.join('/', $row).'/',
+                                    'xlink' => $this->config['settings']['baseURL'].'/'.$this->table.'/'.join('/', $row),
                                     'value' => join(' ', $row)
                                 );
                             }
@@ -254,13 +270,13 @@ class PHPRestSQL {
                 if ($this->db->numRows($resource) > 0) {
                     while ($row = $this->db->row($resource)) {
                         $this->output['database'][] = array(
-                            'xlink' => 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].reset($row).'/',
+                            'xlink' => $this->config['settings']['baseURL'].'/'.reset($row),
                             'value' => reset($row)
                         );
                     }
                     $this->generateResponseData();
                 } else {
-                    $this->notFound();   
+                    $this->notFound();
                 }
             } else {
                 $this->unauthorized();
@@ -297,7 +313,7 @@ class PHPRestSQL {
                                     'value' => $data
                                 );
                                 if (substr($column, -strlen($this->config['database']['foreignKeyPostfix'])) == $this->config['database']['foreignKeyPostfix']) {
-                                    $field['xlink'] = 'http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].substr($column, 0, -strlen($this->config['database']['foreignKeyPostfix'])).'/'.$data.'/';
+                                    $field['xlink'] = $this->config['settings']['baseURL'].'/'.substr($column, 0, -strlen($this->config['database']['foreignKeyPostfix'])).'/'.$data.'/';
                                 }
                                 $values[] = $field;
                             }
@@ -323,7 +339,7 @@ class PHPRestSQL {
                 $resource = $this->db->insertRow($this->table, $names, $values);
                 if ($resource) {
                     if ($this->db->numAffected() > 0) {
-                        $this->created('http://'.$_SERVER['HTTP_HOST'].$this->config['settings']['baseURL'].$this->table.'/'.$this->db->lastInsertId().'/');
+						$this->created($this->config['settings']['baseURL'].'/'.$this->table.'/'.$this->db->lastInsertId().'/');
                     } else {
                         $this->badRequest();
                     }
@@ -387,7 +403,7 @@ class PHPRestSQL {
             $this->methodNotAllowed('GET, HEAD');
         }
     }
-
+	
     /**
      * Execute a DELETE request. A DELETE request removes a row from the database given a table and primary key(s).
      */
@@ -438,7 +454,14 @@ class PHPRestSQL {
      * Generate the HTTP response data.
      */
     function generateResponseData() {
-        if (isset($_SERVER['HTTP_ACCEPT'])) {
+		if ($this->extension) {
+			if (isset($this->config['mimetypes'][$this->extension])) {
+				$mimetype = $this->config['mimetypes'][$this->extension];
+				if (isset($this->config['renderers'][$mimetype])) {
+					$renderClass = $this->config['renderers'][$mimetype];
+				}
+			}
+		} elseif (isset($_SERVER['HTTP_ACCEPT'])) {
             $accepts = explode(',', $_SERVER['HTTP_ACCEPT']);
             $orderedAccepts = array();
             foreach ($accepts as $key => $accept) {
@@ -464,16 +487,17 @@ class PHPRestSQL {
                     }
                 }
             }
-            if (!isset($renderClass)) {
-                $this->notAcceptable();
-                exit;
-            }
         } else {
             $renderClass = array_shift($this->config['renderers']);
         }
-        require_once($renderClass);
-        $renderer =& new PHPRestSQLRenderer();
-        $renderer->render($this);
+		if (isset($renderClass)) {
+			require_once($renderClass);
+			$renderer = new PHPRestSQLRenderer();
+			$renderer->render($this);
+		} else {
+			$this->notAcceptable();
+			exit;
+		}
     }
         
     /**
@@ -497,17 +521,15 @@ class PHPRestSQL {
      * Send a HTTP 400 response header.
      */
     function badRequest() {
-        header('HTTP/1.0 400 Bad Request');   
+        header('HTTP/1.0 400 Bad Request');
     }
     
     /**
      * Send a HTTP 401 response header.
      */
     function unauthorized($realm = 'PHPRestSQL') {
-        if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
-            header('WWW-Authenticate: Basic realm="'.$realm.'"');
-        }
-        header('HTTP/1.0 401 Unauthorized');   
+        header('WWW-Authenticate: Basic realm="'.$realm.'"');
+        header('HTTP/1.0 401 Unauthorized');
     }
     
     /**

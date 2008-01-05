@@ -1,5 +1,4 @@
 <?php
-/* $id$ */
 
 /**
  * PHP REST SQL plain text renderer class
@@ -73,5 +72,3 @@ class PHPRestSQLRenderer {
     }
 
 }
-
-?>
