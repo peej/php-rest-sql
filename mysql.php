@@ -14,13 +14,17 @@ class mysql {
     
     /**
      * Connect to the database.
-     * @param str server
-     * @param str username
-     * @param str password
+     * @param str[] config
      */
-    function connect($server, $username, $password) {
-        if ($this->db = @mysql_pconnect($server, $username, $password)) {
-            return TRUE;
+    function connect($config) {
+        if ($this->db = @mysql_pconnect(
+			$config['server'],
+			$config['username'],
+			$config['password']
+		)) {
+			if ($this->select_db($config['database'])) {
+				return TRUE;
+			}
         }
         return FALSE;
     }
@@ -48,7 +52,7 @@ class mysql {
      * @return resource A resultset resource
      */
     function getColumns($table) {
-        return mysql_query(sprintf('SHOW COLUMNS FROM %s', $table), $this->db);   
+        return mysql_query(sprintf('SHOW COLUMNS FROM %s', $table), $this->db);
     }
     
     /**
@@ -58,7 +62,7 @@ class mysql {
      * @return resource A resultset resource
      */
     function getRow($table, $where) {
-        return mysql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));   
+        return mysql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));
     }
     
     /**
@@ -68,7 +72,7 @@ class mysql {
      * @return resource A resultset resource
      */
     function getTable($primary, $table) {
-        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));   
+        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));
     }
 
     /**
@@ -76,7 +80,7 @@ class mysql {
      * @return resource A resultset resource
      */
     function getDatabase() {
-        return mysql_query('SHOW TABLES');   
+        return mysql_query('SHOW TABLES');
     }
     
     /**
@@ -87,7 +91,7 @@ class mysql {
      * @return bool
      */
     function updateRow($table, $values, $where) {
-        return mysql_query(sprintf('UPDATE %s SET %s WHERE %s', $table, $values, $where));        
+        return mysql_query(sprintf('UPDATE %s SET %s WHERE %s', $table, $values, $where));
     }
     
     /**
@@ -107,7 +111,7 @@ class mysql {
      * @return resource A resultset resource
      */
     function deleteRow($table, $where) {
-        return mysql_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));   
+        return mysql_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));
     }
     
     /**
@@ -125,7 +129,7 @@ class mysql {
      * @return str[] An array of the fields and values from the next row in the resultset
      */
     function row($resource) {
-        return mysql_fetch_assoc($resource);   
+        return mysql_fetch_assoc($resource);
     }
 
     /**
@@ -150,7 +154,7 @@ class mysql {
      * @return int The last insert ID
      */
     function lastInsertId() {
-        return mysql_insert_id();   
+        return mysql_insert_id();
     }
     
 }

@@ -137,28 +137,17 @@ class PHPRestSQL {
         require_once($database.'.php');
         $this->db = new $database(); 
         if (isset($this->config['database']['username']) && isset($this->config['database']['password'])) {
-            if (!$this->db->connect(
-                $this->config['database']['server'],
-                $this->config['database']['username'],
-                $this->config['database']['password']
-            )) {
+            if (!$this->db->connect($this->config['database'])) {
                 trigger_error('Could not connect to server', E_USER_ERROR);
             }
         } elseif (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
-            if (!$this->db->connect(
-                $this->config['database']['server'],
-                $_SERVER['PHP_AUTH_USER'],
-                $_SERVER['PHP_AUTH_PW']
-            )) {
+            if (!$this->db->connect($this->config['database'])) {
                 $this->unauthorized();
                 exit;
             }
         } else {
             $this->unauthorized();
             exit;
-        }
-        if (!$this->db->select_db($this->config['database']['database'])) {
-            trigger_error('Could not select database', E_USER_ERROR);   
         }
     }
     
