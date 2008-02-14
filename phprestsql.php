@@ -85,7 +85,6 @@ class PHPRestSQL {
      * @param str iniFile Configuration file to use
      */
     function PHPRestSQL($iniFile = 'phprestsql.ini') {
-        
         $this->config = parse_ini_file($iniFile, TRUE);
         
         if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD'])) {
@@ -182,16 +181,18 @@ class PHPRestSQL {
      * @return str[] The primary key field names
      */
     function getPrimaryKeys() {
-        $resource = $this->db->getColumns($this->table);
-        $primary = NULL;
-        if ($resource) {
-            while ($row = $this->db->row($resource)) {
-                if ($row['Key'] == 'PRI') {
-                    $primary[] = $row['Field'];
-                }
-            }
-        }
-        return $primary;
+    	return $this->db->getPrimaryKeys($this->table);
+
+        #$resource = $this->db->getColumns($this->table);
+        #$primary = NULL;
+        #if ($resource) {
+        #    while ($row = $this->db->row($resource)) {
+        #        if ($row['Key'] == 'PRI') {
+        #            $primary[] = $row['Field'];
+        #        }
+        #    }
+        #}
+        #return $primary;
     }
     
     /**
@@ -207,7 +208,7 @@ class PHPRestSQL {
                     $this->display = 'row';
                     $where = '';
                     foreach($primary as $key => $pri) {
-                        $where .= $pri.' = '.$this->uid[$key].' AND ';
+                        $where .= $pri.' = \''.$this->uid[$key].'\' AND ';
                     }
                     $where = substr($where, 0, -5);
                     $resource = $this->db->getRow($this->table, $where);
@@ -351,12 +352,36 @@ class PHPRestSQL {
         if ($this->table && $this->uid) {
             if ($this->requestData) {
                 $primary = $this->getPrimaryKeys();
-                if ($primary && count($primary) == count($this->uid)) { // insert a row with a uid
+                if ($primary && count($primary) == count($this->uid)) { // (attempt to) insert a row with a uid
+
+                    // prepare data for INSERT
                     $pairs = $this->parseRequestData();
                     $values = join('", "', $this->uid).'", "'.join('", "', $pairs);
                     $names = join('`, `', $primary).'`, `'.join('`, `', array_keys($pairs));
-                    $resource = $this->db->insertRow($this->table, $names, $values);
-                    if ($resource && $this->db->numAffected() > 0) {
+                    
+                    // prepare data for a SELECT (i.e. check wheter a
+                    // row with the same ID/PKey exists)
+                    # TODO: the same code is in many other places in this
+                    # script, you should better write a function, then call it 
+                    $where = '';
+                    foreach($primary as $key => $pri) {
+                        $where .= $pri.' = \''.$this->uid[$key].'\' AND ';
+                    }
+                    $where = substr($where, 0, -5);
+                    #print("\nWHERE $where\n"); #DEBUG
+                    #die(); #DEBUG
+
+                    # imho calling insertRow is not robust because 
+                    # relies on mysql failing silently on INSERT, then check 
+                    # if number of affected rows == 0 to know wheter to 
+                    # perform an UPDATE instead...  PostgreSQL is stricter
+                    # and pg_query issues a Warning (which sounds reasonable).
+                    # gd <guidoderosa@gmail.com>
+                    #$resource = $this->db->insertRow($this->table, $names, $values);
+                    # Do a SELECT (check) instead... 
+                    $resource = $this->db->getRow($this->table, $where);
+                    if ($resource && $this->db->numRows($resource) == 0) {
+                        $resource = $this->db->insertRow($this->table, $names, $values);
                         $this->created();
                     } else {
                         $values = '';
@@ -364,11 +389,13 @@ class PHPRestSQL {
                             $values .= '`'.$column.'` = "'.$this->db->escape($data).'", ';
                         }
                         $values = substr($values, 0, -2);
-                        $where = '';
-                        foreach($primary as $key => $pri) {
-                            $where .= $pri.' = '.$this->uid[$key].' AND ';
-                        }
-                        $where = substr($where, 0, -5);
+
+                        # WHERE string ($where) already computed
+                        #$where = '';
+                        #foreach($primary as $key => $pri) {
+                        #    $where .= $pri.' = '.$this->uid[$key].' AND ';
+                        #}
+                        #$where = substr($where, 0, -5);
                         $resource = $this->db->updateRow($this->table, $values, $where);
                         if ($resource) {
                             if ($this->db->numAffected() > 0) {

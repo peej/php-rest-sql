@@ -3,7 +3,10 @@
 PHP REST SQL: A HTTP REST interface to relational databases
 written in PHP
 
-mysql.php :: MySQL database adapter
+postgresql.php :: PostgreSQL database adapter
+Copyright (C) 2008 Guido De Rosa <guidoderosa@gmail.com>
+
+based on MySQL driver mysql.php by Paul James
 Copyright (C) 2004 Paul James <paul@peej.co.uk>
 
 This program is free software; you can redistribute it and/or modify
@@ -24,10 +27,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* $id$ */
 
 /**
- * PHP REST MySQL class
- * MySQL connection class.
+ * PHP REST PostgreSQL class
+ * PostgreSQL connection class.
  */
-class mysql {
+class postgresql {
+    
+	/**
+	 * @var int
+	 */
+	var $lastInsertPKeys;
+	
+	/**
+	 * @var resource
+	 */
+    var $lastQueryResultResource;
     
     /**
      * @var resource Database resource
@@ -39,33 +52,26 @@ class mysql {
      * @param str[] config
      */
     function connect($config) {
-        if ($this->db = @mysql_pconnect(
+		
+		$connString = sprintf(
+			'host=%s user=%s password=%s dbname=%s',
 			$config['server'],
+			$config['database'],
 			$config['username'],
 			$config['password']
-		)) {
-			if ($this->select_db($config['database'])) {
-				return TRUE;
-			}
-        }
-        return FALSE;
+		);
+		
+        if ($this->db = pg_pconnect($connString)) {
+            return TRUE;
+	    }
+		return FALSE;
     }
 
     /**
      * Close the database connection.
      */
     function close() {
-        mysql_close($this->db);
-    }
-    
-    /**
-     * Use a database
-     */
-    function select_db($database) {
-        if (mysql_select_db($database, $this->db)) {
-            return TRUE;
-        }
-        return FALSE;
+        pg_close($this->db);
     }
     
     /**
@@ -74,7 +80,8 @@ class mysql {
      * @return resource A resultset resource
      */
     function getColumns($table) {
-        return mysql_query(sprintf('SHOW COLUMNS FROM %s', $table), $this->db);
+    	$qs = sprintf('SELECT * FROM information_schema.columns WHERE table_name =\'%s\'', $table);
+		return pg_query($qs, $this->db);
     }
     
     /**
@@ -84,7 +91,11 @@ class mysql {
      * @return resource A resultset resource
      */
     function getRow($table, $where) {
-        return mysql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));
+        $result = pg_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));   
+    	if ($result) {
+	        $this->lastQueryResultResource = $result;
+	    }
+        return $result;
     }
     
     /**
@@ -94,7 +105,11 @@ class mysql {
      * @return resource A resultset resource
      */
     function getTable($primary, $table) {
-        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));
+        $result = pg_query(sprintf('SELECT %s FROM %s', $primary, $table));  
+        if ($result) {
+            $this->lastQueryResultResource = $result;
+        }
+        return $result;        
     }
 
     /**
@@ -102,26 +117,38 @@ class mysql {
      * @return resource A resultset resource
      */
     function getDatabase() {
-        return mysql_query('SHOW TABLES');
+        return pg_query('SELECT table_name FROM information_schema.tables WHERE table_schema=\'public\'');   
     }
-
+	
     /**
      * Get the primary keys for the request table.
      * @return str[] The primary key field names
      */
     function getPrimaryKeys($table) {
-        $resource = $this->getColumns($table);
+        $i = 0;
         $primary = NULL;
-        if ($resource) {
-            while ($row = $this->row($resource)) {
-                if ($row['Key'] == 'PRI') {
-                    $primary[] = $row['Field'];
-                }
-            }
-        }
+        do {
+		    $query = sprintf('SELECT pg_attribute.attname
+		        FROM pg_class, pg_attribute, pg_index
+                WHERE pg_class.oid = pg_attribute.attrelid AND
+                pg_class.oid = pg_index.indrelid AND
+                pg_index.indkey[%d] = pg_attribute.attnum AND
+                pg_index.indisprimary = \'t\'
+                and relname=\'%s\'',
+				$i,
+				$table
+			);
+        	$result = pg_query($query);
+            $row = pg_fetch_assoc($result);
+            if ($row) {
+                $primary[] = $row['attname'];
+            } 
+            $i++;
+        } while ($row);
+		
         return $primary;
     }
-    
+	
     /**
      * Update a row.
      * @param str table
@@ -130,7 +157,15 @@ class mysql {
      * @return bool
      */
     function updateRow($table, $values, $where) {
-        return mysql_query(sprintf('UPDATE %s SET %s WHERE %s', $table, $values, $where));
+        # translate from MySQL syntax :)
+        $values = preg_replace('/"/','\'',$values);
+        $values = preg_replace('/`/','"',$values); 
+        $qs = sprintf('UPDATE %s SET %s WHERE %s', $table, $values, $where);
+        $result = pg_query($qs);       
+        if ($result) {
+            $this->lastQueryResultResource = $result;
+        }
+        return $result;
     }
     
     /**
@@ -141,7 +176,26 @@ class mysql {
      * @return bool
      */
     function insertRow($table, $names, $values) {
-        return mysql_query(sprintf('INSERT INTO %s (`%s`) VALUES ("%s")', $table, $names, $values));
+        # translate from MySQL syntax
+		$names = preg_replace('/`/', '"', $names); #backticks r so MySQL-ish! ;)
+        $values = preg_replace('/"/', '\'', $values);
+        $pkeys = join(', ', $this->getPrimaryKeys($table));
+        
+        $qs = sprintf(
+			'INSERT INTO $table ("%s") VALUES ("%s") RETURNING (%s)',
+			$names,
+			$values,
+			$pkeys
+		);
+        $result = pg_query($qs); #or die(pg_last_error());
+		
+        $lastInsertPKeys = pg_fetch_row($result);
+        $this->lastInsertPKeys = $lastInsertPKeys;
+		
+        if ($result) {
+            $this->lastQueryResultResource = $result;
+        }
+        return $result;
     }
     
     /**
@@ -150,7 +204,11 @@ class mysql {
      * @return resource A resultset resource
      */
     function deleteRow($table, $where) {
-        return mysql_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));
+        $result = pg_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));   
+        if ($result) {
+            $this->lastQueryResultResource = $result;
+        }
+        return $result;
     }
     
     /**
@@ -159,7 +217,7 @@ class mysql {
      * @return str The escaped string
      */
     function escape($string) {
-        return mysql_escape_string($string);
+        return pg_escape_string($string);
     }
     
     /**
@@ -168,7 +226,7 @@ class mysql {
      * @return str[] An array of the fields and values from the next row in the resultset
      */
     function row($resource) {
-        return mysql_fetch_assoc($resource);
+        return pg_fetch_assoc($resource);
     }
 
     /**
@@ -177,7 +235,7 @@ class mysql {
      * @return int The number of rows
      */
     function numRows($resource) {
-        return mysql_num_rows($resource);
+        return pg_num_rows($resource);
     }
 
     /**
@@ -185,15 +243,15 @@ class mysql {
      * @return int The number of rows
      */
     function numAffected() {
-        return mysql_affected_rows($this->db);
+        return pg_affected_rows($this->lastQueryResultResource);
     }
     
     /**
      * Get the ID of the last inserted record. 
-     * @return int The last insert ID
+     * @return int The last insert ID ('a/b' in case of multi-field primary key)
      */
     function lastInsertId() {
-        return mysql_insert_id();
+        return join('/', $this->lastInsertPKeys);
     }
     
 }
