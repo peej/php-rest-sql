@@ -140,6 +140,8 @@ class PHPRestSQL {
                 trigger_error('Could not connect to server', E_USER_ERROR);
             }
         } elseif (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
+			$this->config['database']['username'] = $_SERVER['PHP_AUTH_USER'];
+			$this->config['database']['password'] = $_SERVER['PHP_AUTH_PW'];
             if (!$this->db->connect($this->config['database'])) {
                 $this->unauthorized();
                 exit;
