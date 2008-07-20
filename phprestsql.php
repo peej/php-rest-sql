@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * PHP REST SQL class
  * The base class for the Rest SQL system that opens up a REST interface to a MySQL database.
  */
-class PHPRestSQL {
+class PHPRestSQfL {
     
     /**
      * Parsed configuration file
@@ -292,7 +292,7 @@ class PHPRestSQL {
                     $values = substr($values, 0, -2);
                     $where = '';
                     foreach($primary as $key => $pri) {
-                        $where .= $pri.' = '.$this->uid[$key].' AND ';
+                        $where .= $pri.' = \''.$this->uid[$key].'\' AND ';
                     }
                     $where = substr($where, 0, -5);
                     $resource = $this->db->updateRow($this->table, $values, $where);
@@ -431,7 +431,7 @@ class PHPRestSQL {
             if ($primary && count($primary) == count($this->uid)) { // delete a row
                 $where = '';
                 foreach($primary as $key => $pri) {
-                    $where .= $pri.' = '.$this->uid[$key].' AND ';
+                    $where .= $pri.' = \''.$this->uid[$key].'\' AND ';
                 }
                 $where = substr($where, 0, -5);
                 $resource = $this->db->deleteRow($this->table, $where);
