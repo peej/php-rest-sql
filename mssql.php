@@ -3,10 +3,10 @@
 PHP REST SQL: A HTTP REST interface to relational databases
 written in PHP
 
-postgresql.php :: PostgreSQL database adapter
-Copyright (C) 2008 Guido De Rosa <guidoderosa@gmail.com>
+mssql.php :: Mssql database adapter
+Copyright (C) 2008 Lee Smith <lee@aionex.com>
 
-based on MySQL driver mysql.php by Paul James
+based on MySQL adapter mysql.php by Paul James
 Copyright (C) 2004 Paul James <paul@peej.co.uk>
 
 This program is free software; you can redistribute it and/or modify
@@ -27,10 +27,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* $id$ */
 
 /**
- * PHP REST PostgreSQL class
- * PostgreSQL connection class.
+ * PHP REST Mssql class
+ * Mssql connection class.
  */
-class postgresql {
+class mssql {
     
 	/**
 	 * @var int
@@ -61,8 +61,9 @@ class postgresql {
 			$config['password']
 		);
 		
-        if ($this->db = pg_pconnect($connString)) {
-            return TRUE;
+		if ($this->db = mssql_pconnect($config['server'], $config['username'], $config['password'])) {
+		    mssql_select_db($config['database']);
+		    return TRUE;
 	    }
 		return FALSE;
     }
@@ -71,7 +72,7 @@ class postgresql {
      * Close the database connection.
      */
     function close() {
-        pg_close($this->db);
+        mssql_close($this->db);
     }
     
     /**
@@ -81,7 +82,7 @@ class postgresql {
      */
     function getColumns($table) {
     	$qs = sprintf('SELECT * FROM information_schema.columns WHERE table_name =\'%s\'', $table);
-		return pg_query($qs, $this->db);
+		return mssql_query($qs, $this->db);
     }
     
     /**
@@ -91,7 +92,7 @@ class postgresql {
      * @return resource A resultset resource
      */
     function getRow($table, $where) {
-        $result = pg_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));   
+        $result = mssql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));   
     	if ($result) {
 	        $this->lastQueryResultResource = $result;
 	    }
@@ -105,7 +106,7 @@ class postgresql {
      * @return resource A resultset resource
      */
     function getTable($primary, $table) {
-        $result = pg_query(sprintf('SELECT %s FROM %s', $primary, $table));  
+        $result = mssql_query(sprintf('SELECT %s FROM %s', $primary, $table));  
         if ($result) {
             $this->lastQueryResultResource = $result;
         }
@@ -117,7 +118,7 @@ class postgresql {
      * @return resource A resultset resource
      */
     function getDatabase() {
-        return pg_query('SELECT table_name FROM information_schema.tables WHERE table_schema=\'public\'');   
+        return mssql_query('SELECT table_name FROM information_schema.tables');   
     }
 	
     /**
@@ -125,28 +126,27 @@ class postgresql {
      * @return str[] The primary key field names
      */
     function getPrimaryKeys($table) {
-        $i = 0;
-        $primary = NULL;
-        do {
-		    $query = sprintf('SELECT pg_attribute.attname
-		        FROM pg_class, pg_attribute, pg_index
-                WHERE pg_class.oid = pg_attribute.attrelid AND
-                pg_class.oid = pg_index.indrelid AND
-                pg_index.indkey[%d] = pg_attribute.attnum AND
-                pg_index.indisprimary = \'t\'
-                and relname=\'%s\'',
-				$i,
-				$table
-			);
-        	$result = pg_query($query);
-            $row = pg_fetch_assoc($result);
-            if ($row) {
-                $primary[] = $row['attname'];
-            } 
-            $i++;
-        } while ($row);
-		
-        return $primary;
+      $primary = NULL;
+      $query = sprintf("SELECT [name]
+  FROM syscolumns 
+	WHERE [id] IN (SELECT [id] 
+                  FROM sysobjects 
+		       WHERE [name] = '%s')
+	AND colid IN (SELECT SIK.colid 
+                   FROM sysindexkeys SIK 
+                   JOIN sysobjects SO ON SIK.[id] = SO.[id]  
+                  WHERE SIK.indid = 1
+		      AND SO.[name] = '%s')", $table, $table);
+
+
+      $result = mssql_query($query);
+      //      while($row = mssql_fetch_assoc($result))
+      $row = mssql_fetch_assoc($result);
+	{
+	  if($row)
+	    $primary[] = $row['name'];
+	}
+      return $primary;
     }
 	
     /**
@@ -161,7 +161,7 @@ class postgresql {
         $values = preg_replace('/"/','\'',$values);
         $values = preg_replace('/`/','"',$values); 
         $qs = sprintf('UPDATE %s SET %s WHERE %s', $table, $values, $where);
-        $result = pg_query($qs);       
+        $result = mssql_query($qs);       
         if ($result) {
             $this->lastQueryResultResource = $result;
         }
@@ -187,9 +187,9 @@ class postgresql {
 			$values,
 			$pkeys
 		);
-        $result = pg_query($qs); #or die(pg_last_error());
+        $result = mssql_query($qs); #or die(pg_last_error());
 		
-        $lastInsertPKeys = pg_fetch_row($result);
+        $lastInsertPKeys = mssql_fetch_row($result);
         $this->lastInsertPKeys = $lastInsertPKeys;
 		
         if ($result) {
@@ -204,7 +204,7 @@ class postgresql {
      * @return resource A resultset resource
      */
     function deleteRow($table, $where) {
-        $result = pg_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));   
+        $result = mssql_query(sprintf('DELETE FROM %s WHERE %s', $table, $where));   
         if ($result) {
             $this->lastQueryResultResource = $result;
         }
@@ -217,7 +217,7 @@ class postgresql {
      * @return str The escaped string
      */
     function escape($string) {
-        return pg_escape_string($string);
+        return mysql_escape_string($string);
     }
     
     /**
@@ -226,7 +226,7 @@ class postgresql {
      * @return str[] An array of the fields and values from the next row in the resultset
      */
     function row($resource) {
-        return pg_fetch_assoc($resource);
+        return mssql_fetch_assoc($resource);
     }
 
     /**
@@ -235,7 +235,7 @@ class postgresql {
      * @return int The number of rows
      */
     function numRows($resource) {
-        return pg_num_rows($resource);
+        return mssql_num_rows($resource);
     }
 
     /**
@@ -243,7 +243,7 @@ class postgresql {
      * @return int The number of rows
      */
     function numAffected() {
-        return pg_affected_rows($this->lastQueryResultResource);
+        return mssql_rows_affected($this->lastQueryResultResource);
     }
     
     /**
