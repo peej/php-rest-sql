@@ -18,13 +18,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/* $id$ */
-
 /**
  * PHP REST SQL class
  * The base class for the Rest SQL system that opens up a REST interface to a MySQL database.
  */
-class PHPRestSQfL {
+class PHPRestSQL {
     
     /**
      * Parsed configuration file
