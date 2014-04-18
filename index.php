@@ -2,7 +2,7 @@
 
 require_once('phprestsql.php');
 
-$PHPRestSQL =& new PHPRestSQL();
+$PHPRestSQL = new PHPRestSQL();
 $PHPRestSQL->exec();
 
 /*
