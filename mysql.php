@@ -81,20 +81,35 @@ class mysql {
      * Get a row from a table.
      * @param str table
      * @param str where
+     * @param str[] contains requested columns
      * @return resource A resultset resource
      */
-    function getRow($table, $where) {
-        return mysql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));
+    function getRow($table, $where, $fields = NULL) {
+        $inject = '';
+        if($fields == NULL) $inject = "*";
+        else {
+            $fieldnames = explode(',', $fields);
+            foreach($fieldnames as $field) {
+                $inject .= $field . ',';            
+            }
+            // remove redundant comma
+            $inject = substr($inject, 0, strlen($inject)-1);
+        }
+        return mysql_query(sprintf('SELECT %s FROM %s WHERE %s', $inject, $table, $where));
     }
     
     /**
      * Get the rows in a table.
      * @param str primary The names of the primary columns to return
      * @param str table
+     * @param int from lowerbound for the LIMIT
+     * @param int to denoting the interval starting at lowerbound
+     * @param str[] sort contains columns for sorting purposes 
+     * @param str[] filter contains search criteria for the rows 
      * @return resource A resultset resource
      */
-    function getTable($primary, $table) {
-        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));
+    function getTable($primary, $table, $from, $to, $sort = NULL, $filter = NULL) {
+        return mysql_query(sprintf('SELECT %s FROM %s LIMIT %d, %d', $primary, $table, $from, $to));
     }
 
     /**
