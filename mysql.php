@@ -40,13 +40,13 @@ class mysql {
      */
     function connect($config) {
         if ($this->db = @mysql_pconnect(
-			$config['server'],
-			$config['username'],
-			$config['password']
-		)) {
-			if ($this->select_db($config['database'])) {
-				return TRUE;
-			}
+            $config['server'],
+            $config['username'],
+            $config['password']
+        )) {
+            if ($this->select_db($config['database'])) {
+                return TRUE;
+            }
         }
         return FALSE;
     }
@@ -98,7 +98,7 @@ class mysql {
         return mysql_query(sprintf('SELECT %s FROM %s WHERE %s', $inject, $table, $where));
     }
     
-        /**
+    /**
      * Get the rows in a table.
      * @param str primary The names of the primary columns to return
      * @param str table

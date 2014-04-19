@@ -92,7 +92,7 @@ class PHPRestSQL {
     var $filters = array();
     
     /**
-     * Stores orderby parameter criteria for tables.
+     * Stores sort parameter criteria for tables.
      * @var str[]
      */
     var $orderby = NULL;
@@ -127,7 +127,6 @@ class PHPRestSQL {
      * @param str iniFile Configuration file to use
      */
     function PHPRestSQL($iniFile = 'phprestsql.ini') {
-        
         $this->config = parse_ini_file($iniFile, TRUE);
         
         // Setting default values if parameter is undefined.
@@ -172,7 +171,7 @@ class PHPRestSQL {
                             $this->fields = $value;
                             break;
                         default:
-                            array_push($this->filters, $value);
+                            $this->filters[$key] = $value;
                     }
                 }
             }
@@ -222,7 +221,6 @@ class PHPRestSQL {
      * Execute the request.
      */
     function exec() {
-       
         $this->connect();
         
         switch ($this->method) {
@@ -314,7 +312,7 @@ class PHPRestSQL {
     
     /**
      * Is responsibel for loading the requested table content.
-     * Based on the following GET parameters: page, per_page, orderby, col1=filter, format parameter.
+     * Based on the following GET parameters: page, per_page, sort, col1=filter, format parameter.
     */
     private function get_table($primary) {
         $this->display = 'table';
@@ -361,6 +359,7 @@ class PHPRestSQL {
                 $this->generateResponseData();
             } else {
                 $this->notFound();
+                
             }
         } else {
             $this->unauthorized();
