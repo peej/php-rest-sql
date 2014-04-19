@@ -92,10 +92,10 @@ class PHPRestSQL {
     var $filters = array();
     
     /**
-     * Stores sort parameter criteria for tables.
+     * Stores orderby parameter criteria for tables.
      * @var str[]
      */
-    var $sort = NULL;
+    var $orderby = NULL;
     
     /**
      * Stores a subset of columns to be presented on item view.
@@ -159,8 +159,8 @@ class PHPRestSQL {
                         case "format":
                             $this->format = $value;
                             break;
-                        case "sort":
-                            $this->sort = $value;
+                        case "orderby":
+                            $this->orderby = $value;
                             break;
                         case "page":
                             $this->page = $value;
@@ -314,7 +314,7 @@ class PHPRestSQL {
     
     /**
      * Is responsibel for loading the requested table content.
-     * Based on the following GET parameters: page, per_page, sort, col1=filter, format parameter.
+     * Based on the following GET parameters: page, per_page, orderby, col1=filter, format parameter.
     */
     private function get_table($primary) {
         $this->display = 'table';
@@ -325,7 +325,7 @@ class PHPRestSQL {
                                         $this->table, 
                                         $from, 
                                         $this->per_page,
-                                        $this->sort,
+                                        $this->orderby,
                                         $this->filters);
         
         if ($resource) {

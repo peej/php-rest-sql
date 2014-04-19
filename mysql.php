@@ -98,7 +98,7 @@ class mysql {
         return mysql_query(sprintf('SELECT %s FROM %s WHERE %s', $inject, $table, $where));
     }
     
-    /**
+        /**
      * Get the rows in a table.
      * @param str primary The names of the primary columns to return
      * @param str table
@@ -108,8 +108,53 @@ class mysql {
      * @param str[] filter contains search criteria for the rows 
      * @return resource A resultset resource
      */
-    function getTable($primary, $table, $from, $to, $sort = NULL, $filter = NULL) {
-        return mysql_query(sprintf('SELECT %s FROM %s LIMIT %d, %d', $primary, $table, $from, $to));
+    function getTable($primary, $table, $from, $to, $orderby = NULL, $filters = NULL) {
+        
+        // pepare ORDER BY clause
+        $orderbys = explode(',', $orderby);
+        if($orderby != NULL) {
+            $orderby_clause = 'ORDER BY ';
+            foreach($orderbys as $order) {
+                if($order[0] == '-') { 
+                    $order = ltrim($order, '-');
+                    $orderby_clause .= ' ' . $order . ' DESC,';
+                } else {
+                    $orderby_clause .= ' ' . $order . ' ASC,';
+                }
+            }
+            $orderby_clause = rtrim($orderby_clause, ",");
+        } else {
+            $orderby_clause = '';
+        }
+        
+        // prepare WHERE clause
+        $where_clause = '';
+        if(count($filters) > 0) {
+            $where_clause = 'WHERE ';
+            foreach($filters as $key => $value) {
+                $operator = $value[0];
+                $value = mysql_real_escape_string(substr($value, 1));
+                $key = mysql_real_escape_string($key);
+                switch($operator) {
+                    case '~':
+                        $where_clause .= ' ' . '`' . $key . '`' . ' LIKE ' . '\'%' . $value . '%\'' . ' AND';
+                        break;
+                    case '=':
+                        $where_clause .= ' ' . '`' . $key . '`' . '=' . $value . ' AND';
+                        break;
+                    case '<':
+                        $where_clause .= ' ' . '`' . $key . '`' . '<' . $value . 'AND';
+                        break;
+                    case '>':
+                        $where_clause .= ' ' . '`' . $key . '`' . '>' . $value . ' AND';
+                        break;
+                }
+            }
+            $where_clause = rtrim($where_clause, "AND");
+        }
+
+        $query = sprintf('SELECT %s FROM %s %s %s LIMIT %d, %d', $primary, $table, $where_clause, $orderby_clause, $from, $to);
+        return mysql_query($query);
     }
 
     /**
