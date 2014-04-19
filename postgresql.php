@@ -104,7 +104,7 @@ class postgresql {
      * @param str table
      * @return resource A resultset resource
      */
-    function getTable($primary, $table) {
+    function getTable($primary, $table, $from = NULL, $to = NULL, $orderby = NULL, $filters = NULL) {
         $result = pg_query(sprintf('SELECT %s FROM %s', $primary, $table));  
         if ($result) {
             $this->lastQueryResultResource = $result;

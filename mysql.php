@@ -111,9 +111,11 @@ class mysql {
     function getTable($primary, $table, $from = NULL, $to = NULL, $orderby = NULL, $filters = NULL) {
         
         // prepare LIMIT clause
-        if($from == NULL || $to == NULL) $limit_clause = '';
-        else $limit_clause = ' LIMIT ' . $from . ',' . $to . ' ';
-
+        $limit_clause = '';
+        if(($from != NULL) && ($to != NULL)) {
+            $limit_clause .= ' LIMIT ' . $from . ', ' . $to . ' ';
+        }
+        
         // pepare ORDER BY clause
         $orderbys = explode(',', $orderby);
         if($orderby != NULL) {

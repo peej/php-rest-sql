@@ -105,7 +105,7 @@ class mssql {
      * @param str table
      * @return resource A resultset resource
      */
-    function getTable($primary, $table) {
+    function getTable($primary, $table, $from = NULL, $to = NULL, $orderby = NULL, $filters = NULL) {
         $result = mssql_query(sprintf('SELECT %s FROM %s', $primary, $table));  
         if ($result) {
             $this->lastQueryResultResource = $result;
