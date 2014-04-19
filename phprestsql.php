@@ -169,7 +169,7 @@ class PHPRestSQL {
                     }
                 }
             }
-            
+
             $dirs = $parser->getDirs();
             if(count($dirs) == 0) {
                 $this->type = 'tables';
@@ -179,7 +179,10 @@ class PHPRestSQL {
                 $this->type = 'table';
             } else if(count($dirs) == 2) {
                 $this->type = 'row';
-                $this->uid = $dirs[1];
+                $uids = explode(',', $dirs[1]);
+                foreach($uids as $uid) {
+                    if($uid !== '') $this->uid[] = $uid;
+                }
                 $this->table = $dirs[0];
             }
             
