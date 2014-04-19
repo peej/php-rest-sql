@@ -50,12 +50,6 @@ class PHPRestSQL {
     var $requestData = NULL;
     
     /**
-     * The URL extension stripped off of the request URL
-     * @var str
-     */
-    var $extension = NULL;
-    
-    /**
      * The database table to query.
      * @var str
      */
@@ -116,7 +110,7 @@ class PHPRestSQL {
     var $per_page = NULL;
     
     /**
-     * Denotes the format
+     * Denotes the format of the output.
      * @var str
      */
     var $format = NULL;
@@ -562,9 +556,9 @@ class PHPRestSQL {
      * Generate the HTTP response data.
      */
     function generateResponseData() {
-        if ($this->extension) {
-            if (isset($this->config['mimetypes'][$this->extension])) {
-                $mimetype = $this->config['mimetypes'][$this->extension];
+        if ($this->format) {
+            if (isset($this->config['mimetypes'][$this->format])) {
+                $mimetype = $this->config['mimetypes'][$this->format];
                 if (isset($this->config['renderers'][$mimetype])) {
                     $renderClass = $this->config['renderers'][$mimetype];
                 }

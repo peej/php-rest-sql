@@ -112,10 +112,10 @@ class mysql {
         
         // prepare LIMIT clause
         $limit_clause = '';
-        if(($from != NULL) && ($to != NULL)) {
+        if(($from !== NULL) && ($to !== NULL)) {
             $limit_clause .= ' LIMIT ' . $from . ', ' . $to . ' ';
         }
-        
+
         // pepare ORDER BY clause
         $orderbys = explode(',', $orderby);
         if($orderby != NULL) {
