@@ -108,8 +108,12 @@ class mysql {
      * @param str[] filter contains search criteria for the rows 
      * @return resource A resultset resource
      */
-    function getTable($primary, $table, $from, $to, $orderby = NULL, $filters = NULL) {
+    function getTable($primary, $table, $from = NULL, $to = NULL, $orderby = NULL, $filters = NULL) {
         
+        // prepare LIMIT clause
+        if($from == NULL || $to == NULL) $limit_clause = '';
+        else $limit_clause = ' LIMIT ' . $from . ',' . $to . ' ';
+
         // pepare ORDER BY clause
         $orderbys = explode(',', $orderby);
         if($orderby != NULL) {
@@ -153,7 +157,7 @@ class mysql {
             $where_clause = rtrim($where_clause, "AND");
         }
 
-        $query = sprintf('SELECT %s FROM %s %s %s LIMIT %d, %d', $primary, $table, $where_clause, $orderby_clause, $from, $to);
+        $query = sprintf('SELECT %s FROM %s %s %s %s', $primary, $table, $where_clause, $orderby_clause, $limit_clause);
         return mysql_query($query);
     }
 
