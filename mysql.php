@@ -40,13 +40,13 @@ class mysql {
      */
     function connect($config) {
         if ($this->db = @mysql_pconnect(
-			$config['server'],
-			$config['username'],
-			$config['password']
-		)) {
-			if ($this->select_db($config['database'])) {
-				return TRUE;
-			}
+            $config['server'],
+            $config['username'],
+            $config['password']
+        )) {
+            if ($this->select_db($config['database'])) {
+                return TRUE;
+            }
         }
         return FALSE;
     }
@@ -81,20 +81,86 @@ class mysql {
      * Get a row from a table.
      * @param str table
      * @param str where
+     * @param str[] contains requested columns
      * @return resource A resultset resource
      */
-    function getRow($table, $where) {
-        return mysql_query(sprintf('SELECT * FROM %s WHERE %s', $table, $where));
+    function getRow($table, $where, $fields = NULL) {
+        $inject = '';
+        if($fields == NULL) $inject = "*";
+        else {
+            $fieldnames = explode(',', $fields);
+            foreach($fieldnames as $field) {
+                $inject .= $field . ',';            
+            }
+            // remove redundant comma
+            $inject = substr($inject, 0, strlen($inject)-1);
+        }
+        return mysql_query(sprintf('SELECT %s FROM %s WHERE %s', $inject, $table, $where));
     }
     
     /**
      * Get the rows in a table.
      * @param str primary The names of the primary columns to return
      * @param str table
+     * @param int from lowerbound for the LIMIT
+     * @param int to denoting the interval starting at lowerbound
+     * @param str[] sort contains columns for sorting purposes 
+     * @param str[] filter contains search criteria for the rows 
      * @return resource A resultset resource
      */
-    function getTable($primary, $table) {
-        return mysql_query(sprintf('SELECT %s FROM %s', $primary, $table));
+    function getTable($primary, $table, $from = NULL, $to = NULL, $orderby = NULL, $filters = NULL) {
+        
+        // prepare LIMIT clause
+        $limit_clause = '';
+        if(($from !== NULL) && ($to !== NULL)) {
+            $limit_clause .= ' LIMIT ' . $from . ', ' . $to . ' ';
+        }
+
+        // pepare ORDER BY clause
+        $orderbys = explode(',', $orderby);
+        if($orderby != NULL) {
+            $orderby_clause = 'ORDER BY ';
+            foreach($orderbys as $order) {
+                if($order[0] == '-') { 
+                    $order = ltrim($order, '-');
+                    $orderby_clause .= ' ' . $order . ' DESC,';
+                } else {
+                    $orderby_clause .= ' ' . $order . ' ASC,';
+                }
+            }
+            $orderby_clause = rtrim($orderby_clause, ",");
+        } else {
+            $orderby_clause = '';
+        }
+        
+        // prepare WHERE clause
+        $where_clause = '';
+        if(count($filters) > 0) {
+            $where_clause = 'WHERE ';
+            foreach($filters as $key => $value) {
+                $operator = $value[0];
+                $value = mysql_real_escape_string(substr($value, 1));
+                $key = mysql_real_escape_string($key);
+                switch($operator) {
+                    case '~':
+                        $where_clause .= ' ' . '`' . $key . '`' . ' LIKE ' . '\'%' . $value . '%\'' . ' AND';
+                        break;
+                    case '=':
+                        $where_clause .= ' ' . '`' . $key . '`' . '=' . $value . ' AND';
+                        break;
+                    case '<':
+                        $where_clause .= ' ' . '`' . $key . '`' . '<' . $value . 'AND';
+                        break;
+                    case '>':
+                        $where_clause .= ' ' . '`' . $key . '`' . '>' . $value . ' AND';
+                        break;
+                }
+            }
+            $where_clause = rtrim($where_clause, "AND");
+        }
+
+        $query = sprintf('SELECT %s FROM %s %s %s %s', $primary, $table, $where_clause, $orderby_clause, $limit_clause);
+        return mysql_query($query);
     }
 
     /**
