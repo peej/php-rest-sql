@@ -46,25 +46,25 @@ class PHPRestSQL {
      * The HTTP request data sent (if any).
      * @var str
      */
-    var $requestData = NULL;
+    var $requestData = null;
 	
 	/**
 	 * The URL extension stripped off of the request URL
 	 * @var str
 	 */
-	var $extension = NULL;
+	var $extension = null;
 	
     /**
      * The database table to query.
      * @var str
      */
-    var $table = NULL;
+    var $table = null;
 
     /**
      * The primary key of the database row to query.
      * @var str[]
      */
-    var $uid = NULL;
+    var $uid = null;
     
     /**
      * Array of strings to convert into the HTTP response.
@@ -75,7 +75,7 @@ class PHPRestSQL {
     /**
      * Type of display, database, table or row.
      */
-    var $display = NULL;
+    var $display = null;
     
     /**
      * Constructor. Parses the configuration file "phprestsql.ini", grabs any request data sent, records the HTTP
@@ -83,7 +83,7 @@ class PHPRestSQL {
      * @param str iniFile Configuration file to use
      */
     function PHPRestSQL($iniFile = 'phprestsql.ini') {
-        $this->config = parse_ini_file($iniFile, TRUE);
+        $this->config = parse_ini_file($iniFile, true);
         
         if (isset($_SERVER['REQUEST_URI']) && isset($_SERVER['REQUEST_METHOD'])) {
         
@@ -101,7 +101,7 @@ class PHPRestSQL {
 			
 			$lastPart = array_pop($urlParts);
 			$dotPosition = strpos($lastPart, '.');
-			if ($dotPosition !== FALSE) {
+			if ($dotPosition !== false) {
 				$this->extension = substr($lastPart, $dotPosition + 1);
 				$lastPart = substr($lastPart, 0, $dotPosition);
 			}
@@ -519,7 +519,7 @@ class PHPRestSQL {
     /**
      * Send a HTTP 201 response header.
      */
-    function created($url = FALSE) {
+    function created($url = false) {
         header('HTTP/1.0 201 Created');
         if ($url) {
             header('Location: '.$url);   

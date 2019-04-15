@@ -62,9 +62,9 @@ class postgresql {
 		);
 		
         if ($this->db = pg_pconnect($connString)) {
-            return TRUE;
+            return true;
 	    }
-		return FALSE;
+		return false;
     }
 
     /**
@@ -126,7 +126,7 @@ class postgresql {
      */
     function getPrimaryKeys($table) {
         $i = 0;
-        $primary = NULL;
+        $primary = null;
         do {
 		    $query = sprintf('SELECT pg_attribute.attname
 		        FROM pg_class, pg_attribute, pg_index
