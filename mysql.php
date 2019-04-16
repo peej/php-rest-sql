@@ -45,10 +45,10 @@ class mysql {
 			$config['password']
 		)) {
 			if ($this->select_db($config['database'])) {
-				return TRUE;
+				return true;
 			}
         }
-        return FALSE;
+        return false;
     }
 
     /**
@@ -63,9 +63,9 @@ class mysql {
      */
     function select_db($database) {
         if (mysql_select_db($database, $this->db)) {
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
     
     /**
@@ -111,7 +111,7 @@ class mysql {
      */
     function getPrimaryKeys($table) {
         $resource = $this->getColumns($table);
-        $primary = NULL;
+        $primary = null;
         if ($resource) {
             while ($row = $this->row($resource)) {
                 if ($row['Key'] == 'PRI') {

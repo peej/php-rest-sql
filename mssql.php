@@ -63,9 +63,9 @@ class mssql {
 		
 		if ($this->db = mssql_pconnect($config['server'], $config['username'], $config['password'])) {
 		    mssql_select_db($config['database']);
-		    return TRUE;
+		    return true;
 	    }
-		return FALSE;
+		return false;
     }
 
     /**
@@ -126,7 +126,7 @@ class mssql {
      * @return str[] The primary key field names
      */
     function getPrimaryKeys($table) {
-      $primary = NULL;
+      $primary = null;
       $query = sprintf("SELECT [name]
   FROM syscolumns 
 	WHERE [id] IN (SELECT [id] 
